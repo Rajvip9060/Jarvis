@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet } from "react-native";
 import { Message } from "@/context/AppContext";
 import Colors from "@/constants/colors";
 
@@ -28,9 +28,18 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           isUser ? styles.userBubble : styles.aiBubble,
         ]}
       >
-        <Text style={[styles.text, isUser ? styles.userText : styles.aiText]}>
-          {message.content}
-        </Text>
+        {isUser && message.imageUri ? (
+          <Image
+            source={{ uri: message.imageUri }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : null}
+        {message.content ? (
+          <Text style={[styles.text, isUser ? styles.userText : styles.aiText]}>
+            {message.content}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -71,6 +80,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 18,
+    gap: 8,
   },
   userBubble: {
     backgroundColor: "rgba(0, 212, 255, 0.12)",
@@ -83,6 +93,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
     borderBottomLeftRadius: 4,
+  },
+  image: {
+    width: 200,
+    height: 160,
+    borderRadius: 10,
   },
   text: {
     fontSize: 15,

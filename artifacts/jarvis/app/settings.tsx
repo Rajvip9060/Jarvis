@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  ScrollView,
   StyleSheet,
   Platform,
   Alert,
@@ -92,7 +91,16 @@ function ApiKeyField({
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { apiKeys, saveApiKeys, activeProvider, setActiveProvider } = useApp();
+  const {
+    apiKeys,
+    saveApiKeys,
+    activeProvider,
+    setActiveProvider,
+    ttsEnabled,
+    setTtsEnabled,
+    deleteHistory,
+    messages,
+  } = useApp();
   const [keys, setKeys] = useState<ApiKeys>({ ...apiKeys });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -115,12 +123,32 @@ export default function SettingsScreen() {
     }
   };
 
-  const topPad =
-    insets.top + (Platform.OS === "web" ? 67 : 0);
+  const handleClearChat = () => {
+    const doDelete = () => {
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+      deleteHistory();
+    };
+
+    if (Platform.OS === "web") {
+      doDelete();
+      return;
+    }
+    Alert.alert(
+      "Clear Chat History",
+      "This will permanently erase all conversations. Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Clear", style: "destructive", onPress: doDelete },
+      ]
+    );
+  };
+
+  const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
 
   return (
     <View style={[styles.root, { backgroundColor: Colors.dark.background }]}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 8 }]}>
         <Pressable
           onPress={() => router.back()}
@@ -191,7 +219,6 @@ export default function SettingsScreen() {
           />
         ))}
 
-        {/* Save button */}
         <Pressable
           onPress={handleSave}
           disabled={saving}
@@ -205,7 +232,7 @@ export default function SettingsScreen() {
           {saved ? (
             <>
               <Feather name="check" size={16} color={Colors.dark.background} />
-              <Text style={styles.saveButtonText}>Saved</Text>
+              <Text style={styles.saveButtonText}>Saved!</Text>
             </>
           ) : (
             <Text style={styles.saveButtonText}>
@@ -214,7 +241,54 @@ export default function SettingsScreen() {
           )}
         </Pressable>
 
-        {/* Info */}
+        {/* Voice (TTS) settings */}
+        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Voice</Text>
+        <View style={styles.toggleCard}>
+          <View style={styles.toggleInfo}>
+            <Feather name="volume-2" size={18} color={Colors.dark.tint} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.toggleCardLabel}>Speak Responses (TTS)</Text>
+              <Text style={styles.toggleCardHint}>
+                Jarvis will read AI replies aloud automatically
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => {
+              if (Platform.OS !== "web") {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+              setTtsEnabled(!ttsEnabled);
+            }}
+            style={[
+              styles.toggleSwitch,
+              ttsEnabled && styles.toggleSwitchActive,
+            ]}
+          >
+            <View
+              style={[
+                styles.toggleKnob,
+                ttsEnabled && styles.toggleKnobActive,
+              ]}
+            />
+          </Pressable>
+        </View>
+
+        {/* Danger Zone */}
+        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Danger Zone</Text>
+        <Pressable
+          onPress={handleClearChat}
+          style={({ pressed }) => [
+            styles.dangerButton,
+            pressed && { opacity: 0.7 },
+            messages.length === 0 && { opacity: 0.4 },
+          ]}
+          disabled={messages.length === 0}
+        >
+          <Feather name="trash-2" size={16} color={Colors.dark.error} />
+          <Text style={styles.dangerButtonText}>Clear Chat History</Text>
+        </Pressable>
+
         <View style={styles.infoCard}>
           <Feather
             name="shield"
@@ -392,6 +466,72 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_700Bold",
     color: Colors.dark.background,
+  },
+  toggleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.dark.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.dark.border,
+    padding: 14,
+    gap: 12,
+  },
+  toggleInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  toggleCardLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.dark.text,
+  },
+  toggleCardHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.dark.textMuted,
+    marginTop: 2,
+  },
+  toggleSwitch: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.dark.border,
+    justifyContent: "center",
+    paddingHorizontal: 2,
+  },
+  toggleSwitchActive: {
+    backgroundColor: "rgba(0, 212, 255, 0.3)",
+    borderColor: Colors.dark.tint,
+    borderWidth: 1,
+  },
+  toggleKnob: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.dark.textMuted,
+  },
+  toggleKnobActive: {
+    backgroundColor: Colors.dark.tint,
+    alignSelf: "flex-end",
+  },
+  dangerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "rgba(255, 68, 68, 0.08)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255, 68, 68, 0.3)",
+    paddingVertical: 16,
+  },
+  dangerButtonText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.dark.error,
   },
   infoCard: {
     flexDirection: "row",

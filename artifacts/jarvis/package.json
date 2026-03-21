@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "expo-av": "^16.0.8",
-    "expo-secure-store": "^55.0.9"
+    "expo-secure-store": "^55.0.9",
+    "expo-speech": "^55.0.9"
   }
 }

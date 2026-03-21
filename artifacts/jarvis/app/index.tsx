@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -44,6 +44,7 @@ export default function ChatScreen() {
     setIsListening,
     activeProvider,
     apiKeys,
+    stopSpeaking,
   } = useApp();
 
   const reversedMessages = [...messages].reverse();
@@ -192,33 +193,68 @@ export default function ChatScreen() {
             size={140}
           />
           <Text style={styles.orbLabel}>
-            {isListening ? "Listening..." : "Hello, I am Jarvis"}
+            {isSpeaking
+              ? "Speaking..."
+              : isListening
+              ? "Listening..."
+              : "Hello, I am Jarvis"}
           </Text>
           <Text style={styles.orbSub}>
             {!hasKey
               ? `Add a ${PROVIDER_LABELS[activeProvider]} API key in Settings to get started`
               : "Type a message or tap the mic to speak"}
           </Text>
+          {isSpeaking && (
+            <Pressable
+              onPress={() => {
+                if (Platform.OS !== "web") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                stopSpeaking();
+              }}
+              style={({ pressed }) => [
+                styles.stopButton,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Feather name="square" size={14} color={Colors.dark.background} />
+              <Text style={styles.stopButtonText}>Stop Speaking</Text>
+            </Pressable>
+          )}
         </View>
       ) : (
-        <FlatList
-          data={reversedMessages}
-          keyExtractor={(item: Message) => item.id}
-          renderItem={({ item }: { item: Message }) => (
-            <MessageBubble message={item} />
+        <View style={{ flex: 1 }}>
+          <FlatList
+            data={reversedMessages}
+            keyExtractor={(item: Message) => item.id}
+            renderItem={({ item }: { item: Message }) => (
+              <MessageBubble message={item} />
+            )}
+            inverted
+            ListHeaderComponent={showTyping ? <TypingIndicator /> : null}
+            contentContainerStyle={styles.messageList}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          />
+          {/* Mini orb when speaking + has messages */}
+          {isSpeaking && (
+            <Pressable
+              onPress={stopSpeaking}
+              style={styles.speakingBanner}
+            >
+              <View style={styles.speakingDot} />
+              <Text style={styles.speakingText}>Speaking — tap to stop</Text>
+              <Feather name="square" size={14} color={Colors.dark.tint} />
+            </Pressable>
           )}
-          inverted={hasMessages}
-          ListHeaderComponent={showTyping ? <TypingIndicator /> : null}
-          contentContainerStyle={styles.messageList}
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        />
+        </View>
       )}
 
-      {/* Bottom area */}
+      {/* Bottom input area */}
       <View style={styles.bottomArea}>
         <View style={styles.inputArea}>
+          {/* Voice FAB — floating style */}
           <View style={styles.fabContainer}>
             <VoiceFAB isListening={isListening} onPress={handleVoicePress} />
           </View>
@@ -353,7 +389,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 20,
+    gap: 16,
     paddingHorizontal: 32,
   },
   orbLabel: {
@@ -369,6 +405,50 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
+  stopButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.dark.tint,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    shadowColor: Colors.dark.tint,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  stopButtonText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.dark.background,
+  },
+  speakingBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: "rgba(0, 212, 255, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 212, 255, 0.25)",
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  speakingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.dark.tint,
+  },
+  speakingText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.dark.tint,
+  },
   messageList: {
     paddingVertical: 12,
     flexGrow: 1,
@@ -379,12 +459,14 @@ const styles = StyleSheet.create({
   inputArea: {
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingHorizontal: 12,
+    paddingLeft: 12,
+    paddingRight: 0,
     paddingVertical: 8,
-    gap: 8,
+    gap: 0,
   },
   fabContainer: {
-    paddingBottom: 6,
+    paddingBottom: 14,
+    paddingRight: 4,
   },
   inputWrapper: {
     flex: 1,

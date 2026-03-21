@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
+import * as Speech from "expo-speech";
 import { Platform } from "react-native";
 
 export interface Message {
@@ -16,6 +17,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  imageUri?: string;
 }
 
 export interface ApiKeys {
@@ -33,15 +35,18 @@ interface AppContextType {
   isStreaming: boolean;
   showTyping: boolean;
   backgroundListening: boolean;
+  ttsEnabled: boolean;
   apiKeys: ApiKeys;
   activeProvider: AIProvider;
   setActiveProvider: (p: AIProvider) => void;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, imageBase64?: string, imageMime?: string, imageUri?: string) => Promise<void>;
   deleteHistory: () => void;
   setBackgroundListening: (val: boolean) => void;
+  setTtsEnabled: (val: boolean) => void;
   saveApiKeys: (keys: ApiKeys) => Promise<void>;
   setIsListening: (val: boolean) => void;
   setIsSpeaking: (val: boolean) => void;
+  stopSpeaking: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -49,6 +54,7 @@ const AppContext = createContext<AppContextType | null>(null);
 const STORAGE_KEY = "jarvis_messages";
 const BACKGROUND_KEY = "jarvis_background_listening";
 const PROVIDER_KEY = "jarvis_provider";
+const TTS_KEY = "jarvis_tts_enabled";
 
 let msgCounter = 0;
 function generateId(): string {
@@ -74,12 +80,26 @@ async function secureSet(key: string, value: string): Promise<void> {
 async function callGemini(
   messages: Message[],
   apiKey: string,
-  onChunk: (text: string) => void
+  onChunk: (text: string) => void,
+  imageBase64?: string,
+  imageMime?: string
 ): Promise<void> {
-  const contents = messages.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
+  const contents = messages.map((m, idx) => {
+    const isLastUser = m.role === "user" && idx === messages.length - 1;
+    if (isLastUser && imageBase64 && imageMime) {
+      return {
+        role: "user",
+        parts: [
+          { text: m.content || "What is in this image?" },
+          { inlineData: { mimeType: imageMime, data: imageBase64 } },
+        ],
+      };
+    }
+    return {
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    };
+  });
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
@@ -274,6 +294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showTyping, setShowTyping] = useState(false);
   const [backgroundListening, setBackgroundListeningState] = useState(false);
+  const [ttsEnabled, setTtsEnabledState] = useState(true);
   const [apiKeys, setApiKeys] = useState<ApiKeys>({
     gemini: "",
     openai: "",
@@ -285,11 +306,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [stored, bg, provider, gemini, openai, openrouter] =
+        const [stored, bg, provider, tts, gemini, openai, openrouter] =
           await Promise.all([
             AsyncStorage.getItem(STORAGE_KEY),
             AsyncStorage.getItem(BACKGROUND_KEY),
             AsyncStorage.getItem(PROVIDER_KEY),
+            AsyncStorage.getItem(TTS_KEY),
             secureGet("jarvis_key_gemini"),
             secureGet("jarvis_key_openai"),
             secureGet("jarvis_key_openrouter"),
@@ -301,6 +323,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         if (bg) setBackgroundListeningState(bg === "true");
         if (provider) setActiveProvider(provider as AIProvider);
+        if (tts !== null) setTtsEnabledState(tts === "true");
         setApiKeys({ gemini, openai, openrouter });
         initialized.current = true;
       } catch {}
@@ -313,15 +336,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
+  const stopSpeaking = useCallback(() => {
+    try {
+      Speech.stop();
+    } catch {}
+    setIsSpeaking(false);
+  }, []);
+
+  const speakText = useCallback(
+    (text: string) => {
+      try {
+        Speech.stop();
+      } catch {}
+      const clean = text
+        .replace(/```[\s\S]*?```/g, "code block")
+        .replace(/[*_~`#]/g, "")
+        .replace(/\n+/g, " ")
+        .trim();
+      if (!clean) return;
+      setIsSpeaking(true);
+      try {
+        Speech.speak(clean, {
+          rate: 1.0,
+          pitch: 1.0,
+          onDone: () => setIsSpeaking(false),
+          onError: () => setIsSpeaking(false),
+          onStopped: () => setIsSpeaking(false),
+        });
+      } catch {
+        setIsSpeaking(false);
+      }
+    },
+    []
+  );
+
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (
+      text: string,
+      imageBase64?: string,
+      imageMime?: string,
+      imageUri?: string
+    ) => {
       if (isStreaming) return;
 
       const userMsg: Message = {
         id: generateId(),
         role: "user",
-        content: text,
+        content: text || (imageBase64 ? "What's in this image?" : ""),
         timestamp: Date.now(),
+        imageUri,
       };
 
       const currentMsgs = [...messages, userMsg];
@@ -364,13 +427,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         };
 
         if (provider === "gemini") {
-          if (!keys.gemini) throw new Error("No Gemini API key set. Go to Settings to add one.");
-          await callGemini(currentMsgs, keys.gemini, onChunk);
+          if (!keys.gemini)
+            throw new Error(
+              "No Gemini API key set. Go to Settings to add one."
+            );
+          await callGemini(currentMsgs, keys.gemini, onChunk, imageBase64, imageMime);
         } else if (provider === "openai") {
-          if (!keys.openai) throw new Error("No OpenAI API key set. Go to Settings to add one.");
+          if (!keys.openai)
+            throw new Error(
+              "No OpenAI API key set. Go to Settings to add one."
+            );
           await callOpenAI(currentMsgs, keys.openai, onChunk);
         } else {
-          if (!keys.openrouter) throw new Error("No OpenRouter API key set. Go to Settings to add one.");
+          if (!keys.openrouter)
+            throw new Error(
+              "No OpenRouter API key set. Go to Settings to add one."
+            );
           await callOpenRouter(currentMsgs, keys.openrouter, onChunk);
         }
 
@@ -383,10 +455,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
             timestamp: Date.now(),
           };
           setMessages((prev) => [...prev, noContentMsg]);
+          fullContent = noContentMsg.content;
+        }
+
+        if (ttsEnabled && fullContent) {
+          speakText(fullContent);
         }
       } catch (err: unknown) {
         setShowTyping(false);
-        const errMsg = err instanceof Error ? err.message : "An error occurred.";
+        const errMsg =
+          err instanceof Error ? err.message : "An error occurred.";
         const errorMessage: Message = {
           id: assistantAdded ? generateId() : assistantId,
           role: "assistant",
@@ -414,17 +492,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [messages, isStreaming, activeProvider, apiKeys, saveMessages]
+    [messages, isStreaming, activeProvider, apiKeys, saveMessages, ttsEnabled, speakText]
   );
 
   const deleteHistory = useCallback(() => {
+    stopSpeaking();
     setMessages([]);
     AsyncStorage.removeItem(STORAGE_KEY);
-  }, []);
+  }, [stopSpeaking]);
 
   const setBackgroundListening = useCallback((val: boolean) => {
     setBackgroundListeningState(val);
     AsyncStorage.setItem(BACKGROUND_KEY, String(val));
+  }, []);
+
+  const setTtsEnabled = useCallback((val: boolean) => {
+    setTtsEnabledState(val);
+    AsyncStorage.setItem(TTS_KEY, String(val));
+    if (!val) {
+      try {
+        Speech.stop();
+      } catch {}
+      setIsSpeaking(false);
+    }
   }, []);
 
   const saveApiKeys = useCallback(async (keys: ApiKeys) => {
@@ -445,15 +535,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isStreaming,
         showTyping,
         backgroundListening,
+        ttsEnabled,
         apiKeys,
         activeProvider,
         setActiveProvider,
         sendMessage,
         deleteHistory,
         setBackgroundListening,
+        setTtsEnabled,
         saveApiKeys,
         setIsListening,
         setIsSpeaking,
+        stopSpeaking,
       }}
     >
       {children}
