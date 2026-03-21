@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Jarvis",
+    "slug": "jarvis",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "jarvis",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#050A0F"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Jarvis needs microphone access for voice commands.",
+        "NSSpeechRecognitionUsageDescription": "Jarvis uses speech recognition to understand your voice commands."
+      }
+    },
+    "android": {
+      "permissions": [
+        "RECORD_AUDIO",
+        "INTERNET",
+        "WAKE_LOCK"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
