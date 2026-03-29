@@ -1,16 +1,15 @@
-name: Build and Release APK
+name: Build Jarvis APK
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ "main" ]  # जब भी आप Termux से push करेंगे, यह शुरू हो जाएगा
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -20,26 +19,16 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: gradle
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Decode Keystore
-        run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 --decode > app/keystore.jks
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
 
-      - name: Create local.properties
-        run: |
-          echo "KEYSTORE_FILE=keystore.jks" >> local.properties
-          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> local.properties
-          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> local.properties
-          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> local.properties
-
-      - name: Build Release APKs
-        run: ./gradlew assembleRelease
-
-      - name: Upload Release APKs
-        uses: softprops/action-gh-release@v1
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: app/build/outputs/apk/release/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: Jarvis-Assistant-APK
+          path: app/build/outputs/apk/debug/*.apk
