@@ -128,9 +128,10 @@ object GroqApiClient {
 
             // यहाँ 'return' लिखना ज़रूरी है ताकि mismatch वाला एरर न आए
             if (selectedProvider == "openai") {
-                transcribeDirectOpenAI(audioFile, apiKey, baseUrl)
+            //    transcribeDirectOpenAI(audioFile, apiKey, baseUrl)
             } else {
-                transcribeDirectGroq(audioFile, apiKey, baseUrl)
+                // लाइन 133 के आस-पास इसे पेस्ट करें
+                 transcribeDirectGroq(apiKey, audioFile, baseUrl)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -139,8 +140,11 @@ object GroqApiClient {
     }
 
 
-    private suspend fun transcribeDirectGroq(
-        apiKey: String, audioFile: File, language: String?
+        private suspend fun transcribeDirectGroq(
+        apiKey: String,
+        audioFile: File,
+        baseUrl: String,
+        language: String? = null
     ): String? = withContext(Dispatchers.IO) {
         val mimeType = when (audioFile.extension.lowercase()) {
             "m4a" -> "audio/m4a"; "mp3" -> "audio/mpeg"
