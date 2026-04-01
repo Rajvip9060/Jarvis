@@ -113,8 +113,23 @@ object GroqApiClient {
         context: Context, audioFile: File, language: String? = null
     ): String? = withContext(Dispatchers.IO) {
         try {
-            // STT always uses Groq (only provider with Whisper)
-            val groq = getProvider("groq") as? GroqProvider
+        // 1. सबसे पहले चेक करते हैं कि कौन सा प्रोवाइडर सिलेक्टेड है
+       val selectedProvider = SecureKeyStore.getEncryptedPrefs(context).getString("selected_provider", "groq")
+       // 2. अब उसी के हिसाब से API Key और URL सेट करते हैं
+       val apiKey = if (selectedProvider == "openai") {
+      SecureKeyStore.getOpenAiApikey(context)
+   } else {
+      SecureKeyStore.getGroqApiKey(context)
+   }
+
+       baseUrl = if (selectedProvider == "openai") {
+      "https://api.openai.com/v1/"
+   } else {
+      "https://api.groq.com/openai/v1/"
+   }
+         // STT always uses Groq (only provider with Whisper)
+     //       val groq = getProvider("groq") as? GroqProvider
+            val groq = getProvider(selectedProvider ?: "groq") as? GroqProvider
             val apiKey = groq?.getApiKey(context)
             if (apiKey.isNullOrEmpty()) {
                 Log.e(TAG, "Groq API key needed for STT")
@@ -142,10 +157,16 @@ object GroqApiClient {
             .addFormDataPart("response_format", "text")
         language?.let { builder.addFormDataPart("language", it) }
 
-        val request = Request.Builder()
+        /*val request = Request.Builder()
             .url("https://api.groq.com/openai/v1/audio/transcriptions")
             .addHeader("Authorization", "Bearer $apiKey")
-            .post(builder.build()).build()
+            .post(builder.build()).build()*/
+            
+        val request = Request.Builder()
+            .url("${baseUrl}audio/transcriptions")
+            .addHeader("Authorization", "Bearer $apiKey")
+            .post(builder.build()) .build()
+
 
         val response = client.newCall(request).execute()
         if (!response.isSuccessful) {
