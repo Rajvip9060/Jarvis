@@ -132,14 +132,16 @@ object GroqApiClient {
                 // यहाँ 'return' हटाकर सीधे फंक्शन लिखें क्योंकि try इसे return करेगा
                 transcribeDirectGroq(apiKey ?: "", audioFile, baseUrl)
             }
-        } catch (e: Exception) {
+                } catch (e: Exception) {
             e.printStackTrace()
             null
         }
+    } // <--- यह वाला ब्रैकेट चेक करें, यह 'transcribeAudio' को बंद करने के लिए है।
 
 
 
-        private suspend fun transcribeDirectGroq(
+    //    private suspend fun transcribeDirectGroq(
+         private suspend fun transcribeDirectGroq(...) { // इसके बाद यह फंक्शन शुरू होना चाहिए
         apiKey: String,
         audioFile: File,
         baseUrl: String,
