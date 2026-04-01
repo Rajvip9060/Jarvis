@@ -109,33 +109,35 @@ object GroqApiClient {
     // === Speech-to-Text (Whisper) — always via Groq ===
     // =========================================================================
 
-    suspend fun transcribeAudio(
-        context: Context, audioFile: File, language: String? = null
-    ): String? = withContext(Dispatchers.IO) {
-        try {
-        // 1. सबसे पहले चेक करते हैं कि कौन सा प्रोवाइडर सिलेक्टेड है
-       // पुराने कोड की जगह ये नया हिस्सा डालिए
-val prefs = SecureKeyStore.getEncryptedPrefs(context) // ध्यान दें: अगर ये लाइन एरर दे, तो SecureKeyStore फाइल में जाकर इस फंक्शन को 'public' करना होगा
-val selectedProvider = prefs.getString("stt_provider", "groq") ?: "groq"
+        suspend fun transcribeAudio(context: Context, audioFile: File): String? {
+        return try {
+            val prefs = SecureKeyStore.getEncryptedPrefs(context)
+            val selectedProvider = prefs.getString("stt_provider", "groq") ?: "groq"
 
-val apiKey = if (selectedProvider == "openai") {
-    prefs.getString("openai_api_key", "")
-} else {
-    prefs.getString("groq_api_key", "")
-}
+            val apiKey = if (selectedProvider == "openai") {
+                prefs.getString("openai_api_key", "")
+            } else {
+                prefs.getString("groq_api_key", "")
+            }
 
-val baseUrl = if (selectedProvider == "openai") {
-    "https://api.openai.com/v1/"
-} else {
-    "https://api.api.groq.com/openai/v1/"
-}
-// अब नीचे जहाँ API कॉल हो रही है, वहाँ baseUrl और apiKey का इस्तेमाल होगा
+            val baseUrl = if (selectedProvider == "openai") {
+                "https://api.openai.com/v1/"
+            } else {
+                "https://api.groq.com/openai/v1/"
+            }
 
+            // यहाँ 'return' लिखना ज़रूरी है ताकि mismatch वाला एरर न आए
+            if (selectedProvider == "openai") {
+                transcribeDirectOpenAI(audioFile, apiKey, baseUrl)
+            } else {
+                transcribeDirectGroq(audioFile, apiKey, baseUrl)
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "STT failed", e)
+            e.printStackTrace()
             null
         }
     }
+
 
     private suspend fun transcribeDirectGroq(
         apiKey: String, audioFile: File, language: String?
