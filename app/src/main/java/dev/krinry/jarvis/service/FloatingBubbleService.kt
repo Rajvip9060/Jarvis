@@ -422,8 +422,9 @@ class FloatingBubbleService : Service() {
                 val wavFile = saveAsWav(audioBuffer)
                 if (wavFile == null) { withContext(Dispatchers.Main) { addSubtitle("❌ Failed to save audio") }; return@launch }
 
-                val transcript = GroqApiClient.transcribeAudio(applicationContext, wavFile, null)
+                val transcript = GroqApiClient.transcribeAudio(applicationContext, wavFile)
                 wavFile.delete()
+
 
                 withContext(Dispatchers.Main) {
                     if (transcript.isNullOrBlank()) {
