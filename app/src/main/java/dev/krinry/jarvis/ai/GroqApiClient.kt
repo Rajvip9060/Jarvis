@@ -121,12 +121,12 @@ object GroqApiClient {
    } else {
       SecureKeyStore.getGroqApiKey(context)
    }
-
-       baseUrl = if (selectedProvider == "openai") {
+       val baseUrl = if (selectedProvider == "openai") {
       "https://api.openai.com/v1/"
    } else {
-      "https://api.groq.com/openai/v1/"
+    "https://api.groq.com/openai/v1/"
    }
+
          // STT always uses Groq (only provider with Whisper)
      //       val groq = getProvider("groq") as? GroqProvider
             val groq = getProvider(selectedProvider ?: "groq") as? GroqProvider
