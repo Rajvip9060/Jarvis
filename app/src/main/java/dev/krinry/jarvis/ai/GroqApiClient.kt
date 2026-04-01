@@ -110,7 +110,7 @@ object GroqApiClient {
     // =========================================================================
 
         suspend fun transcribeAudio(context: Context, audioFile: File): String? {
-        return try {
+                return try {
             val prefs = SecureKeyStore.getEncryptedPrefs(context)
             val selectedProvider = prefs.getString("stt_provider", "groq") ?: "groq"
 
@@ -126,18 +126,17 @@ object GroqApiClient {
                 "https://api.groq.com/openai/v1/"
             }
 
-            // यहाँ 'return' लिखना ज़रूरी है ताकि mismatch वाला एरर न आए
             if (selectedProvider == "openai") {
-            //    transcribeDirectOpenAI(audioFile, apiKey, baseUrl)
+                null // अभी OpenAI इम्प्लीमेंटेड नहीं है
             } else {
-                // लाइन 133 के आस-पास इसे पेस्ट करें
-                 transcribeDirectGroq(apiKey, audioFile, baseUrl)
+                // यहाँ 'return' हटाकर सीधे फंक्शन लिखें क्योंकि try इसे return करेगा
+                transcribeDirectGroq(apiKey ?: "", audioFile, baseUrl)
             }
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
-    }
+
 
 
         private suspend fun transcribeDirectGroq(
