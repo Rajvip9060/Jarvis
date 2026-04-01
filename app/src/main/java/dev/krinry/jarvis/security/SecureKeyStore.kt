@@ -16,6 +16,7 @@ object SecureKeyStore {
 
     // Keys
     private const val KEY_GROQ_API_KEY = "groq_api_key"
+    private const val KEY_OPENAI_API_KEY = "openai_api_key"
     private const val KEY_OPENROUTER_API_KEY = "openrouter_api_key"
     private const val KEY_AI_ENABLED = "ai_call_enabled"
     private const val KEY_AI_LANGUAGE = "ai_default_language"
@@ -50,9 +51,17 @@ object SecureKeyStore {
     fun saveGroqApiKey(context: Context, apiKey: String) {
         getEncryptedPrefs(context).edit().putString(KEY_GROQ_API_KEY, apiKey).apply()
     }
-
+  
+    fun  saveOpenAiApikey(context: Context, apikey: String) {
+        getEncryptedPrefs(context).edit().putString(KEY_OPENAI_API_KEY, apikey).apply()
+    }
+    
     fun getGroqApiKey(context: Context): String? {
         return getEncryptedPrefs(context).getString(KEY_GROQ_API_KEY, null)
+    }
+
+    fun getOpenAiApikey(context: Context): String? { 
+        return getEncryptedPrefs(context).getString(KEY_OPENAI_API_KEY, null) 
     }
 
     fun hasGroqApiKey(context: Context): Boolean = !getGroqApiKey(context).isNullOrEmpty()
