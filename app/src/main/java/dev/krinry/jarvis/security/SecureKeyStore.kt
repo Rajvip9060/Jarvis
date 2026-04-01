@@ -27,7 +27,7 @@ object SecureKeyStore {
     private const val KEY_FALLBACK_MODEL = "fallback_model"
     private const val KEY_REQUEST_DELAY_MS = "request_delay_ms" // Configurable delay
 
-    private fun getEncryptedPrefs(context: Context) = try {
+          fun getEncryptedPrefs(context: Context) = try {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
