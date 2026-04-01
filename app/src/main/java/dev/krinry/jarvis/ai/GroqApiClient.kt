@@ -114,28 +114,23 @@ object GroqApiClient {
     ): String? = withContext(Dispatchers.IO) {
         try {
         // 1. सबसे पहले चेक करते हैं कि कौन सा प्रोवाइडर सिलेक्टेड है
-       val selectedProvider = SecureKeyStore.getEncryptedPrefs(context).getString("selected_provider", "groq")
-       // 2. अब उसी के हिसाब से API Key और URL सेट करते हैं
-       val apiKey = if (selectedProvider == "openai") {
-      SecureKeyStore.getOpenAiApikey(context)
-   } else {
-      SecureKeyStore.getGroqApiKey(context)
-   }
-       val baseUrl = if (selectedProvider == "openai") {
-      "https://api.openai.com/v1/"
-   } else {
-    "https://api.groq.com/openai/v1/"
-   }
+       // पुराने कोड की जगह ये नया हिस्सा डालिए
+val prefs = SecureKeyStore.getEncryptedPrefs(context) // ध्यान दें: अगर ये लाइन एरर दे, तो SecureKeyStore फाइल में जाकर इस फंक्शन को 'public' करना होगा
+val selectedProvider = prefs.getString("stt_provider", "groq") ?: "groq"
 
-         // STT always uses Groq (only provider with Whisper)
-     //       val groq = getProvider("groq") as? GroqProvider
-            val groq = getProvider(selectedProvider ?: "groq") as? GroqProvider
-            val apiKey = groq?.getApiKey(context)
-            if (apiKey.isNullOrEmpty()) {
-                Log.e(TAG, "Groq API key needed for STT")
-                return@withContext null
-            }
-            transcribeDirectGroq(apiKey, audioFile, language)
+val apiKey = if (selectedProvider == "openai") {
+    prefs.getString("openai_api_key", "")
+} else {
+    prefs.getString("groq_api_key", "")
+}
+
+val baseUrl = if (selectedProvider == "openai") {
+    "https://api.openai.com/v1/"
+} else {
+    "https://api.api.groq.com/openai/v1/"
+}
+// अब नीचे जहाँ API कॉल हो रही है, वहाँ baseUrl और apiKey का इस्तेमाल होगा
+
         } catch (e: Exception) {
             Log.e(TAG, "STT failed", e)
             null
