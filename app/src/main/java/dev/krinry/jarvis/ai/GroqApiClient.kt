@@ -109,8 +109,8 @@ object GroqApiClient {
     // === Speech-to-Text (Whisper) — always via Groq ===
     // =========================================================================
 
-        suspend fun transcribeAudio(context: Context, audioFile: File): String? {
-                return try {
+            suspend fun transcribeAudio(context: Context, audioFile: File): String? {
+        return try {
             val prefs = SecureKeyStore.getEncryptedPrefs(context)
             val selectedProvider = prefs.getString("stt_provider", "groq") ?: "groq"
 
@@ -127,26 +127,28 @@ object GroqApiClient {
             }
 
             if (selectedProvider == "openai") {
-                null // अभी OpenAI इम्प्लीमेंटेड नहीं है
+                null // OpenAI अभी बाकी है
             } else {
-                // यहाँ 'return' हटाकर सीधे फंक्शन लिखें क्योंकि try इसे return करेगा
+                // यहाँ पैरामीटर्स का क्रम और नाम एकदम सही होना चाहिए
                 transcribeDirectGroq(apiKey ?: "", audioFile, baseUrl)
             }
-                } catch (e: Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
             null
         }
-    } // <--- यह वाला ब्रैकेट चेक करें, यह 'transcribeAudio' को बंद करने के लिए है।
+    } // यह ब्रैकेट फंक्शन को बंद करने के लिए बहुत ज़रूरी है!
+
 
 
 
     //    private suspend fun transcribeDirectGroq(
-         private suspend fun transcribeDirectGroq(...) { // इसके बाद यह फंक्शन शुरू होना चाहिए
+          private suspend fun transcribeDirectGroq(
         apiKey: String,
         audioFile: File,
         baseUrl: String,
         language: String? = null
     ): String? = withContext(Dispatchers.IO) {
+        // इसके अंदर का पुराना कोड वैसे ही रहने दें
         val mimeType = when (audioFile.extension.lowercase()) {
             "m4a" -> "audio/m4a"; "mp3" -> "audio/mpeg"
             "ogg" -> "audio/ogg"; "flac" -> "audio/flac"
